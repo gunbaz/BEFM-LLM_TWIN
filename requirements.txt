@@ -1,0 +1,7 @@
+pymongo
+requests
+beautifulsoup4
+pydantic
+# qdrant-client
+# zenml
+# sentence-transformers
