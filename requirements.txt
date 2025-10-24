@@ -2,6 +2,6 @@ pymongo
 requests
 beautifulsoup4
 pydantic
-# qdrant-client
-# zenml
-# sentence-transformers
+qdrant-client
+sentence-transformers
+zenml

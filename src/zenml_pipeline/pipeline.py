@@ -1,62 +1,103 @@
-# TODO: replace with actual @step and @pipeline from zenml
-"""ZenML-style pipeline skeleton orchestrating the data flow."""
+"""ZenML pipeline orchestrating ingestion, embedding, and vector storage."""
 
 from __future__ import annotations
 
-import argparse
-from typing import Iterable, List
+import logging
+from typing import Any, Dict, List
 
-from src.crawler.crawler import PlaceholderCrawler
+from bson import ObjectId
+from zenml import pipeline, step
+
+from src.config import MONGO_DB, QDRANT_COLLECTION, get_mongo_client
 from src.rag.embedder import get_embedding
 from src.rag.vector_store import VectorStore
 
-
-def crawl_step(urls: Iterable[str]) -> List[dict]:
-    """Run the crawler and return raw documents."""
-    crawler = PlaceholderCrawler()
-    return crawler.crawl(urls)
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
-def embed_step(documents: List[dict]) -> List[dict]:
-    """Produce embeddings for each document."""
-    embedded = []
+def _normalise_identifier(identifier: Any) -> str:
+    """Convert Mongo identifiers into string form for downstream use."""
+
+    if isinstance(identifier, ObjectId):
+        return str(identifier)
+    return str(identifier) if identifier is not None else ""
+
+
+@step
+def crawl_step() -> List[Dict[str, Any]]:
+    """Load raw documents from MongoDB for further processing."""
+
+    client = get_mongo_client()
+    collection = client[MONGO_DB]["raw_documents"]
+    documents = list(collection.find())
+    logger.info("Fetched %d documents from MongoDB raw_documents collection.", len(documents))
     for document in documents:
-        embedding = get_embedding(document.get("text", ""))
-        embedded.append({**document, "embedding": embedding})
-    return embedded
+        document["_id"] = _normalise_identifier(document.get("_id"))
+    return documents
 
 
-def store_step(documents: List[dict]) -> None:
-    """Persist embedding records via the vector store interface."""
-    store = VectorStore()
+@step
+def embed_step(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Generate embeddings for each raw document."""
+
+    logger.info("Generating embeddings for %d documents.", len(documents))
+    embedded_documents: List[Dict[str, Any]] = []
     for document in documents:
-        store.upsert(
-            document_id=str(document.get("_id")),
-            embedding=document.get("embedding", []),
-            metadata={"url": document.get("url")},
+        text = document.get("text", "") or ""
+        embedding = get_embedding(text)
+        embedded_documents.append(
+            {
+                "document_id": document.get("_id") or document.get("id"),
+                "url": document.get("url"),
+                "text": text,
+                "status": document.get("status", "processed"),
+                "embedding": embedding,
+            }
         )
-    print(f"Stored {len(documents)} embedded documents via vector store stub.")
+    logger.info("Created embeddings for %d documents.", len(embedded_documents))
+    return embedded_documents
 
 
-def run_pipeline(urls: Iterable[str]) -> None:
-    """Execute the dummy ZenML pipeline."""
-    raw_documents = crawl_step(urls)
-    embedded_documents = embed_step(raw_documents)
-    store_step(embedded_documents)
-    print("Pipeline execution completed.")
+@step
+def store_step(documents: List[Dict[str, Any]]) -> None:
+    """Persist embedding vectors and metadata into Qdrant."""
 
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the dummy ZenML pipeline")
-    parser.add_argument(
-        "urls",
-        metavar="URL",
-        nargs="+",
-        help="List of URLs to process through the pipeline.",
+    store = VectorStore()
+    upserted = 0
+    for document in documents:
+        document_id = document.get("document_id")
+        if not document_id:
+            logger.warning("Skipping document without identifier: %s", document)
+            continue
+        store.upsert(
+            document_id=str(document_id),
+            embedding=document.get("embedding", []),
+            metadata={
+                "url": document.get("url"),
+                "text": document.get("text"),
+                "status": document.get("status", "processed"),
+            },
+        )
+        upserted += 1
+    logger.info(
+        "Upserted %d documents into Qdrant collection '%s'.",
+        upserted,
+        QDRANT_COLLECTION,
     )
-    return parser.parse_args()
+
+
+@pipeline
+def rag_data_pipeline() -> None:
+    """Run the RAG data processing pipeline."""
+
+    documents = crawl_step()
+    embedded_documents = embed_step(documents)
+    store_step(embedded_documents)
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    run_pipeline(args.urls)
+    logger.info("Starting ZenML RAG data pipeline run.")
+    pipeline_run = rag_data_pipeline()
+    pipeline_run.run()
+    logger.info("ZenML RAG data pipeline completed.")

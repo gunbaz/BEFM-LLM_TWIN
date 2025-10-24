@@ -22,7 +22,7 @@ class PlaceholderCrawler:
         """Insert placeholder documents for the given URLs and return them."""
         documents = []
         for url in urls:
-            documents.append({"url": url, "text": "placeholder"})
+            documents.append({"url": url, "text": "placeholder", "status": "raw"})
 
         if not documents:
             return []
