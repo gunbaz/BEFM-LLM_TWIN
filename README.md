@@ -76,7 +76,7 @@ llm-twin/
 └── docker/             # Dockerfile'lar
 ```
 
-## 🛠️ Teknolojiler
+## 🛠️ Teknoloji
 - Python 3.11+
 - FastAPI
 - ZenML
