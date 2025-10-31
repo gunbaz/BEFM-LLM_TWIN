@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  zenml-server:
+    image: zenmldocker/zenml-server:0.90.0
+    container_name: zenml-server
+    ports:
+      - "8237:8080"
+    environment:
+      - ZENML_STORE_URL=sqlite:///zenml/zenml.db
+      - ZENML_DEFAULT_USER_NAME=default
+      - ZENML_DEFAULT_USER_PASSWORD=
+    volumes:
+      - zenml-data:/zenml
+    restart: unless-stopped
+    networks:
+      - llm-twin-network
+
+volumes:
+  zenml-data:
+    driver: local
+
+networks:
+  llm-twin-network:
+    external: true
+    name: llm-twin_default
