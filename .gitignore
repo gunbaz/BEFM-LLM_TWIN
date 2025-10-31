@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual env / tooling
+.venv/
+.env
+.env.*
+.python-version
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / caches / temp
+*.log
+*.tmp
+*.cache/
+.cache/
+api_server.log
+api_server.err.log
+
+# Project large/derived content
+archive/_attic/
+temp_extract/
+
+# Raw data (keep seed file)
+data_raw/*
+!data_raw/seed_urls.txt
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+*.egg
+
+# Environments
+.venv/
+.env
+.env.*
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ZenML local store
+.zen/
+.zenml/
+
+# Build
+build/
+dist/
+
+# Logs
+logs/
+*.log
+
+# Data caches (keep raw inputs versioned if needed)
+/data_clean/
+/embeddings/
+
+# Docker
+*.local.yml
+
+# Geçici analiz dosyaları
+tree_output.txt
+python_files.txt
+PLAN.md
+
+# PyCache (ekstra güvenlik)
+*.pyc
+
+# Geçici çalışma klasörleri
+temp_extract/
